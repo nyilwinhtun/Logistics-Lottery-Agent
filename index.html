@@ -458,7 +458,7 @@
     </div>
 
     <div class="flex items-center gap-1.5">
-      <button type="button" id="agentInstallBtn" onclick="executeDirectHomeInstall()" class="theme-btn-primary px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-md active:scale-95 transition">
+      <button type="button" id="agentInstallBtn" onclick="executeDirectHomeInstall(event)" class="theme-btn-primary px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-md active:scale-95 transition">
         တင်မည်
       </button>
       <button type="button" onclick="dismissHomeBanner()" class="text-slate-400 hover:text-white p-1">
@@ -496,7 +496,7 @@
     let dailyChartInstance = null;
     let selectedTempTheme = "emerald";
 
-    // 2. ONE-CLICK DIRECT INSTALL ENGINE (အမြဲပေါ်နေပြီး တိုက်ရိုက်တင်မည့် ENGINE)
+    // 2. ONE-CLICK DIRECT INSTALL ENGINE (NO RELOAD / PURE NATIVE PROMPT)
     let deferredPrompt = null;
 
     if ('serviceWorker' in navigator) {
@@ -513,32 +513,31 @@
       if (banner) banner.classList.remove('hidden');
     });
 
-    // စာမျက်နှာစဖွင့်သည်နှင့် အက်ပ်သွင်းပြီးသား မဟုတ်ပါက Banner ကို အမြဲတမ်း တန်းဖော်ထားမည်
+    // Standalone Mode စစ်ဆေးခြင်း (ဖုန်းထဲသွင်းပြီးပါက Banner အလိုအလျောက် ပျောက်မည်)
     window.addEventListener('DOMContentLoaded', () => {
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
       const banner = document.getElementById('directHomeInstallBanner');
       if (isStandalone && banner) {
         banner.classList.add('hidden');
-      } else if (banner) {
-        banner.classList.remove('hidden');
       }
     });
 
-    // "တင်မည်" နှိပ်လိုက်သည်နှင့် ဖုန်းစနစ်၏ Native Dialog ကို တိုက်ရိုက်ခေါ်ခြင်း
-    async function executeDirectHomeInstall() {
+    // "တင်မည်" နှိပ်လိုက်သည်နှင့် Page Reload မဖြစ်စေဘဲ Native Prompt တိုက်ရိုက်ဆွဲထုတ်ခြင်း
+    async function executeDirectHomeInstall(e) {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
       const banner = document.getElementById('directHomeInstallBanner');
 
       if (deferredPrompt) {
         deferredPrompt.prompt();
         const choiceResult = await deferredPrompt.userChoice;
         if (choiceResult && choiceResult.outcome === 'accepted') {
-          if (banner) banner.classList.add('hidden');
+          dismissHomeBanner();
         }
         deferredPrompt = null;
-      } else {
-        // Event အဆင်သင့်မဖြစ်သေးပါက တိုက်ရိုက် Chrome Intent ဖြင့် ခေါ်ယူခြင်း
-        const hostUrl = window.location.host + window.location.pathname;
-        window.location.href = `intent://${hostUrl}#Intent;scheme=https;action=android.intent.action.VIEW;package=com.android.chrome;end;`;
       }
     }
 
