@@ -445,27 +445,25 @@
     </div>
   </div>
 
-  <!-- 4. DIRECT ONE-CLICK INSTALL BANNER (စာသားလုံးဝမပါဘဲ ဖုန်းထဲသို့ တိုက်ရိုက် INSTALL တင်မည့် အပိုင်း) -->
-  <div id="directHomeInstallBanner" class="fixed bottom-4 left-4 right-4 max-w-sm mx-auto bg-slate-800/95 border-2 theme-border-primary p-3 rounded-2xl shadow-2xl backdrop-blur-md z-50 hidden transition-all duration-300">
-    <div class="flex items-center justify-between gap-3">
-      <div class="flex items-center gap-2.5">
-        <div class="w-9 h-9 rounded-xl theme-btn-primary flex items-center justify-center shrink-0">
-          <i data-lucide="download" class="w-5 h-5 text-slate-950"></i>
-        </div>
-        <div>
-          <h4 class="text-xs font-bold text-white">ထောက်ပို့ထီ Agent App</h4>
-          <p class="text-[11px] text-slate-400">Home Screen ပေါ် ထည့်သွင်းရန်</p>
-        </div>
+  <!-- 4. DIRECT ONE-CLICK INSTALL BANNER (စဖွင့်ကတည်းက အမြဲတမ်း တန်းပေါ်နေမည့် အပိုင်း) -->
+  <div id="directHomeInstallBanner" class="fixed bottom-4 left-4 right-4 max-w-sm mx-auto bg-slate-800/95 border-2 theme-border-primary p-3 rounded-2xl shadow-2xl backdrop-blur-md z-50 flex items-center justify-between gap-3 transition-all duration-300">
+    <div class="flex items-center gap-2.5">
+      <div class="w-9 h-9 rounded-xl theme-btn-primary flex items-center justify-center shrink-0">
+        <i data-lucide="download" class="w-5 h-5 text-slate-950"></i>
       </div>
+      <div>
+        <h4 class="text-xs font-bold text-white">ထောက်ပို့ထီ Agent App</h4>
+        <p class="text-[11px] text-slate-400">Home Screen ပေါ် ထည့်သွင်းရန်</p>
+      </div>
+    </div>
 
-      <div class="flex items-center gap-1.5">
-        <button type="button" onclick="executeDirectHomeInstall()" class="theme-btn-primary px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-md active:scale-95 transition">
-          တင်မည်
-        </button>
-        <button type="button" onclick="dismissHomeBanner()" class="text-slate-400 hover:text-white p-1">
-          <i data-lucide="x" class="w-4 h-4"></i>
-        </button>
-      </div>
+    <div class="flex items-center gap-1.5">
+      <button type="button" id="agentInstallBtn" onclick="executeDirectHomeInstall()" class="theme-btn-primary px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-md active:scale-95 transition">
+        တင်မည်
+      </button>
+      <button type="button" onclick="dismissHomeBanner()" class="text-slate-400 hover:text-white p-1">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
     </div>
   </div>
 
@@ -498,7 +496,7 @@
     let dailyChartInstance = null;
     let selectedTempTheme = "emerald";
 
-    // 2. ONE-CLICK DIRECT INSTALL ENGINE (NO ALERTS, PURE NATIVE PROMPT)
+    // 2. ONE-CLICK DIRECT INSTALL ENGINE (အမြဲပေါ်နေပြီး တိုက်ရိုက်တင်မည့် ENGINE)
     let deferredPrompt = null;
 
     if ('serviceWorker' in navigator) {
@@ -515,24 +513,32 @@
       if (banner) banner.classList.remove('hidden');
     });
 
-    // Check if App is already installed (Standalone Mode)
+    // စာမျက်နှာစဖွင့်သည်နှင့် အက်ပ်သွင်းပြီးသား မဟုတ်ပါက Banner ကို အမြဲတမ်း တန်းဖော်ထားမည်
     window.addEventListener('DOMContentLoaded', () => {
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
       const banner = document.getElementById('directHomeInstallBanner');
       if (isStandalone && banner) {
         banner.classList.add('hidden');
+      } else if (banner) {
+        banner.classList.remove('hidden');
       }
     });
 
     // "တင်မည်" နှိပ်လိုက်သည်နှင့် ဖုန်းစနစ်၏ Native Dialog ကို တိုက်ရိုက်ခေါ်ခြင်း
     async function executeDirectHomeInstall() {
+      const banner = document.getElementById('directHomeInstallBanner');
+
       if (deferredPrompt) {
         deferredPrompt.prompt();
         const choiceResult = await deferredPrompt.userChoice;
         if (choiceResult && choiceResult.outcome === 'accepted') {
-          dismissHomeBanner();
+          if (banner) banner.classList.add('hidden');
         }
         deferredPrompt = null;
+      } else {
+        // Event အဆင်သင့်မဖြစ်သေးပါက တိုက်ရိုက် Chrome Intent ဖြင့် ခေါ်ယူခြင်း
+        const hostUrl = window.location.host + window.location.pathname;
+        window.location.href = `intent://${hostUrl}#Intent;scheme=https;action=android.intent.action.VIEW;package=com.android.chrome;end;`;
       }
     }
 
