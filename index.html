@@ -7,9 +7,10 @@
 
   <!-- PWA Meta Tags -->
   <meta name="theme-color" content="#0F172A">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="manifest" href="manifest.json">
+  <link rel="manifest" href="./manifest.json">
 
   <!-- Tailwind CSS & Lucide Icons -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -90,7 +91,6 @@
 
       <!-- Actions -->
       <div id="authActions" class="hidden flex items-center gap-2">
-        <!-- Settings Modal Button -->
         <button type="button" onclick="openAgentSettings()" title="Settings" class="p-2 bg-slate-700 hover:bg-slate-600 theme-text-primary rounded-lg border border-slate-600 transition">
           <i data-lucide="settings" class="w-5 h-5"></i>
         </button>
@@ -445,21 +445,21 @@
     </div>
   </div>
 
-  <!-- 4. DIRECT ADD TO HOME SCREEN TRIGGER BANNER (ဘာမှရွေးစရာမလိုဘဲ တိုက်ရိုက်တင်မည့် အပိုင်း) -->
-  <div id="directHomeInstallBanner" class="fixed bottom-4 left-4 right-4 max-w-sm mx-auto bg-slate-800/95 border-2 theme-border-primary p-3.5 rounded-2xl shadow-2xl backdrop-blur-md z-50 hidden transition-all duration-300">
+  <!-- 4. DIRECT ONE-CLICK INSTALL BANNER (စာသားလုံးဝမပါဘဲ ဖုန်းထဲသို့ တိုက်ရိုက် INSTALL တင်မည့် အပိုင်း) -->
+  <div id="directHomeInstallBanner" class="fixed bottom-4 left-4 right-4 max-w-sm mx-auto bg-slate-800/95 border-2 theme-border-primary p-3 rounded-2xl shadow-2xl backdrop-blur-md z-50 hidden transition-all duration-300">
     <div class="flex items-center justify-between gap-3">
       <div class="flex items-center gap-2.5">
         <div class="w-9 h-9 rounded-xl theme-btn-primary flex items-center justify-center shrink-0">
-          <i data-lucide="plus-square" class="w-5 h-5 text-slate-950"></i>
+          <i data-lucide="download" class="w-5 h-5 text-slate-950"></i>
         </div>
         <div>
-          <h4 class="text-xs font-bold text-white">Home Screen ပေါ်တင်ရန်</h4>
-          <p class="text-[11px] text-slate-400">ဖုန်းပေါ်တွင် App အဖြစ်သုံးပါ</p>
+          <h4 class="text-xs font-bold text-white">ထောက်ပို့ထီ Agent App</h4>
+          <p class="text-[11px] text-slate-400">Home Screen ပေါ် ထည့်သွင်းရန်</p>
         </div>
       </div>
 
       <div class="flex items-center gap-1.5">
-        <button type="button" onclick="executeDirectHomeInstall()" class="theme-btn-primary px-3 py-1.5 rounded-xl text-xs font-bold shadow-md transition">
+        <button type="button" onclick="executeDirectHomeInstall()" class="theme-btn-primary px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-md active:scale-95 transition">
           တင်မည်
         </button>
         <button type="button" onclick="dismissHomeBanner()" class="text-slate-400 hover:text-white p-1">
@@ -496,10 +496,52 @@
     let cachedTickets = [];
     let detectedWinners = [];
     let dailyChartInstance = null;
-    let deferredPrompt = null;
     let selectedTempTheme = "emerald";
 
-    // 2. MOBILE ACCORDION (COLLAPSIBLE SECTIONS) ENGINE
+    // 2. ONE-CLICK DIRECT INSTALL ENGINE (NO ALERTS, PURE NATIVE PROMPT)
+    let deferredPrompt = null;
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      });
+    }
+
+    // Capture Browser Native Install Event
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      const banner = document.getElementById('directHomeInstallBanner');
+      if (banner) banner.classList.remove('hidden');
+    });
+
+    // Check if App is already installed (Standalone Mode)
+    window.addEventListener('DOMContentLoaded', () => {
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+      const banner = document.getElementById('directHomeInstallBanner');
+      if (isStandalone && banner) {
+        banner.classList.add('hidden');
+      }
+    });
+
+    // "တင်မည်" နှိပ်လိုက်သည်နှင့် ဖုန်းစနစ်၏ Native Dialog ကို တိုက်ရိုက်ခေါ်ခြင်း
+    async function executeDirectHomeInstall() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const choiceResult = await deferredPrompt.userChoice;
+        if (choiceResult && choiceResult.outcome === 'accepted') {
+          dismissHomeBanner();
+        }
+        deferredPrompt = null;
+      }
+    }
+
+    function dismissHomeBanner() {
+      const banner = document.getElementById('directHomeInstallBanner');
+      if (banner) banner.classList.add('hidden');
+    }
+
+    // 3. MOBILE ACCORDION (COLLAPSIBLE SECTIONS) ENGINE
     function toggleSection(contentId, iconId) {
       const content = document.getElementById(contentId);
       const icon = document.getElementById(iconId);
@@ -514,7 +556,7 @@
       lucide.createIcons();
     }
 
-    // 3. THEME SELECTION & EXPLICIT SAVE ENGINE
+    // 4. THEME SELECTION & EXPLICIT SAVE ENGINE
     function initAgentTheme() {
       const savedTheme = localStorage.getItem('agent_thaukpo_theme') || 'emerald';
       applyThemeToDOM(savedTheme);
@@ -563,66 +605,6 @@
     initAgentTheme();
     lucide.createIcons();
     document.getElementById('ticketDate').valueAsDate = new Date();
-
-    // 4. DIRECT ADD TO HOME SCREEN ENGINE (DIRECT AUTO-TRIGGER)
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js').catch(() => {});
-      });
-    }
-
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-      
-      const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-      if (!isStandalone) {
-        try {
-          deferredPrompt.prompt();
-          deferredPrompt.userChoice.then((choiceResult) => {
-            if (choiceResult.outcome === 'accepted') {
-              dismissHomeBanner();
-            }
-            deferredPrompt = null;
-          });
-        } catch (err) {
-          const banner = document.getElementById('directHomeInstallBanner');
-          if (banner) banner.classList.remove('hidden');
-        }
-      }
-    });
-
-    window.addEventListener('load', () => {
-      setTimeout(() => {
-        const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-        const isDismissed = sessionStorage.getItem('agent_home_banner_dismissed');
-        if (!isStandalone && !isDismissed) {
-          const banner = document.getElementById('directHomeInstallBanner');
-          if (banner) banner.classList.remove('hidden');
-        }
-      }, 1200);
-    });
-
-    function executeDirectHomeInstall() {
-      if (deferredPrompt) {
-        deferredPrompt.prompt();
-        deferredPrompt.userChoice.then((choiceResult) => {
-          if (choiceResult.outcome === 'accepted') {
-            dismissHomeBanner();
-          }
-          deferredPrompt = null;
-        });
-      } else {
-        alert("ဖုန်း Browser Menu ထဲရှိ 'Add to Home screen' သို့မဟုတ် 'Install' ကို ရွေးပေးနိုင်ပါသည်");
-        dismissHomeBanner();
-      }
-    }
-
-    function dismissHomeBanner() {
-      const banner = document.getElementById('directHomeInstallBanner');
-      if (banner) banner.classList.add('hidden');
-      sessionStorage.setItem('agent_home_banner_dismissed', 'true');
-    }
 
     // 5. AUTH STATE LISTENER & AGENT VERIFICATION
     auth.onAuthStateChanged(async (user) => {
